@@ -71,7 +71,7 @@ def get_neighbors(state, max_acceleration, dt):
         new_y = y + new_speed * math.sin(yaw) * dt
         for delta_yaw in [-50 * math.pi / 180, 0, 50 * math.pi / 180]:  # 각도 변경 범위 제한
             new_yaw = yaw + delta_yaw
-            new_yaw = (new_yaw + 2 * math.pi) % (2 * math.pi)  # 각도를 0~2π로 정규화
+            # new_yaw = (new_yaw + 2 * math.pi) % (2 * math.pi)  # 각도를 0~2π로 정규화
             neighbors.append((new_x, new_y, new_yaw, new_speed))
     return neighbors
 
@@ -111,6 +111,10 @@ def planning(sx, sy, syaw, max_acceleration, dt):
             ry = [int(state[1]) for state in path]
 
             # while문 안의 current를 저장해서 txt파일로 (저장 위치 : ~/.ros)
+            tmp_str = ""
+            for s in zip(rx, ry):
+                tmp_str += str(s)
+            log_str = tmp_str + log_str
             save_log(log_str)
             return rx, ry
         
@@ -133,8 +137,9 @@ def planning(sx, sy, syaw, max_acceleration, dt):
 #=============================================
 def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     global rx, ry
+    print(x,y)
     # angle = 10 # -50 ~ 50
-    speed = 50 # -50 ~ 50
+    speed = 0 # -50 ~ 50
     if x > 500:
         angle = 50
     else:
