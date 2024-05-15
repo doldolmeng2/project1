@@ -32,7 +32,9 @@ rx, ry = [300, 350, 400, 450, 1129], [300, 350, 400, 450, 69]
 #=============================================
 AR = (1142, 62) # AR 태그의 위치
 P_ENTRY = (1036, 162) # 주차라인 진입 시점의 좌표
-P_END = (1129, 69) # 주차라인 끝의 좌표
+P_END = (1129, 69) # 주차라인 끝의 좌표 (진입 시점과의 차이 93, -93)
+P_S = (943, 255)
+DECIMAL_POINT = 5
 
 #=============================================
 # 모터 토픽을 발행하는 함수
@@ -50,84 +52,113 @@ def drive(angle, speed):
 # 최대가속도 max_acceleration, 단위시간 dt 를 전달받고
 # 경로를 리스트를 생성하여 반환한다.
 #=============================================
-
-def heuristic(a, b):
-    """ 유클리드 거리 휴리스틱 함수 """
-    return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
-
-def get_neighbors(state, max_acceleration, dt):
+def calculate_third_side(a, b, theta):
     """
-    주어진 상태에서 가능한 다음 상태를 반환.
-    - state: (x, y, yaw, speed)로 구성된 현재 상태.
-    - max_acceleration: 최대 가속도.
-    - dt: 시간 단위.
+    주어진 두 변(a, b)과 그 사이의 각(theta)을 이용하여 세 번째 변(c)을 계산합니다.
+    theta는 라디안 단위여야 합니다.
     """
-    x, y, yaw, speed = state
+    c = math.sqrt(a**2 + b**2 - 2*a*b*math.cos(theta))
+    return c
+
+def heuristic(x, y):
+    """유클리드 거리 기반 히유리스틱 함수."""
+    end_x, end_y = P_S
+    score = math.sqrt((end_x - x) ** 2 + (end_y - y) ** 2)
+    return score
+
+
+
+def neighbors(x, y, yaw, speed, acc, dt, degree):
     neighbors = []
-    for acc in [-max_acceleration, 0, max_acceleration]:
+    for delta_yaw in degree:
+        new_yaw = yaw + delta_yaw
         new_speed = speed + acc * dt
-        new_speed = max(0, min(new_speed, 50))  # 속도는 0에서 50 사이로 제한
-        new_x = x + new_speed * math.cos(yaw) * dt
-        new_y = y + new_speed * math.sin(yaw) * dt
-        for delta_yaw in [-50 * math.pi / 180, 0, 50 * math.pi / 180]:  # 각도 변경 범위 제한
-            new_yaw = yaw + delta_yaw
-            # new_yaw = (new_yaw + 2 * math.pi) % (2 * math.pi)  # 각도를 0~2π로 정규화
-            neighbors.append((new_x, new_y, new_yaw, new_speed))
+        # 속도 50 이하로 제한
+        if abs(new_speed) > 50:
+            if new_speed < 0:
+                new_speed = -50
+            else:
+                new_speed = 50
+        new_x = x + -(new_speed * math.sin(math.radians(new_yaw)) * dt * 4)
+        new_y = y + new_speed * math.cos(math.radians(new_yaw)) * dt * 4
+        neighbors.append(tuple([round(i,5) for i in (new_x, new_y, new_yaw, new_speed)]))
     return neighbors
 
+
+
+
 def planning(sx, sy, syaw, max_acceleration, dt):
-    """
-    A* 알고리즘을 사용한 경로 계획 함수.
-    - sx, sy: 시작 위치의 x, y 좌표.
-    - syaw: 시작 시 차량의 각도 (방향).
-    - max_acceleration: 최대 가속도.
-    - dt: 시간 단위.
-    """
-    log_str = ""
+    global rx, ry
+    """자율주행 경로 생성 함수."""
 
-    start = (sx, sy, syaw, 0)  # 초기 상태 (위치, 방향, 속도)
-    goal_x, goal_y = P_END
-    open_list = []
-    heapq.heappush(open_list, (0, start))  # 우선순위 큐에 시작 상태 추가
+    cnt = 0
+    start = (sx, sy, syaw, 0)  # 초기 상태
+    open_set = []
+    heapq.heappush(open_set, (0, start))
     came_from = {}
-    g_score = {start: 0}  # 시작 상태의 g_score 초기화
-    f_score = {start: heuristic((sx, sy), (goal_x, goal_y))}  # 시작 상태의 f_score 초기화
+    g_score = {start: 0}
+    f_score = {start: heuristic(sx, sy)}
+    reverse_x = []
+    reverse_y = []
     
-    while open_list:
-        current = heapq.heappop(open_list)[1]  # f_score가 가장 낮은 상태 선택
-        x, y, yaw, speed = current
-        strx, stry, stryaw, strspeed = map(str, current)
-        log_str += strx+ "\t" +stry+ "\t" +stryaw+ "\t" +strspeed+'\n'
-        if heuristic((x, y), (goal_x, goal_y)) < 1.0 and speed < 1.0:  # 목표 근처에 도달하고 속도가 0에 가까워지면 종료
-            path = []
-            while current in came_from:
-                path.append(current)  # 경로를 역추적하여 추가
-                current = came_from[current]
-            path.append(start)
-            path.reverse()
-            
-            # 경로를 리스트 형태로 변환
-            rx = [int(state[0]) for state in path]
-            ry = [int(state[1]) for state in path]
-
-            # while문 안의 current를 저장해서 txt파일로 (저장 위치 : ~/.ros)
-            tmp_str = ""
-            for s in zip(rx, ry):
-                tmp_str += str(s)
-            log_str = tmp_str + log_str
-            save_log(log_str)
-            return rx, ry
+    while open_set:
         
-        for neighbor in get_neighbors(current, max_acceleration, dt):
-            tentative_g_score = g_score[current] + dt  # 시간 단위로 비용 계산
+        if cnt == 400:
+            print("reverse mode")
+            reverse_cnt = 0
+            current = start
+            while reverse_cnt < 150:
+                min_h = float("inf")
+                for neighbor in neighbors(*current, -max_acceleration, dt, [-0.2, 0, 0.2]):
+                    if min_h > heuristic(neighbor[0], neighbor[1]):
+                        min_h = heuristic(neighbor[0], neighbor[1])
+                        current = neighbor
+                last_yaw = neighbor[2]
+                reverse_x.append(neighbor[0])
+                reverse_y.append(neighbor[1])
+                reverse_cnt += 1
+
+            start = (reverse_x[-1], reverse_y[-1], last_yaw, 0)  # 초기 상태
+            print(start)
+            open_set = []
+            heapq.heappush(open_set, (0, start))
+            came_from = {}
+            g_score = {start: 0}
+            f_score = {start: heuristic(start[0], start[1])}
             
+        
+        _, current = heapq.heappop(open_set)
+        
+        if heuristic(current[0], current[1]) < 1.0:
+            rx = []
+            ry = []
+            while current in came_from:
+                rx.append(current[0])
+                ry.append(current[1])
+                current = came_from[current]
+            rx.append(start[0])
+            ry.append(start[1])
+            rx.reverse()
+            ry.reverse()
+            rx.extend([i for i in range(945,1130,2)])
+            ry.extend([i for i in range(255,68,-2)])
+            rx = reverse_x + rx
+            ry = reverse_y + ry
+            # print(len(rx)) # 현재 271,322,258,153개
+            return rx, ry
+                
+
+        for neighbor in neighbors(*current, max_acceleration, dt, [-0.8, 0, 0.8]):
+            tentative_g_score = g_score[current] + dt
             if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
-                came_from[neighbor] = current  # 경로 추적을 위해 이전 상태 기록
+                came_from[neighbor] = current
                 g_score[neighbor] = tentative_g_score
-                f_score[neighbor] = g_score[neighbor] + heuristic((neighbor[0], neighbor[1]), (goal_x, goal_y))
-                heapq.heappush(open_list, (f_score[neighbor], neighbor))  # 우선순위 큐에 새로운 상태 추가
+                f_score[neighbor] = tentative_g_score + heuristic(neighbor[0], neighbor[1])
+                heapq.heappush(open_set, (f_score[neighbor], neighbor))
+        cnt += 1
     
-    return None  # 경로를 찾지 못한 경우
+
+
 
 #=============================================
 # 생성된 경로를 따라가는 함수
@@ -135,15 +166,28 @@ def planning(sx, sy, syaw, max_acceleration, dt):
 # 현재속도 velocity, 최대가속도 max_acceleration 단위시간 dt 를 전달받고
 # 각도와 속도를 결정하여 주행한다.
 #=============================================
+
+track_cnt = 0
 def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
-    global rx, ry
-    print(x,y)
+    global rx, ry, track_cnt
     # angle = 10 # -50 ~ 50
-    speed = 0 # -50 ~ 50
-    if x > 500:
+    print(yaw)
+
+    if yaw < 0:
+        speed =0
+        if track_cnt == 0:
+            print('x:',x, '  y:',y, ' velocity:',velocity)
+            track_cnt += 1
+    else:
+        speed = 50 # -50 ~ 50
+    
+    if y < 700:
         angle = 50
     else:
-        angle = 10
+        angle = 0
+    
+
+
     drive(angle, speed)
 
 
