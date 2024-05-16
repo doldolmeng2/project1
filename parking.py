@@ -33,7 +33,7 @@ rx, ry = [300, 350, 400, 450, 1129], [300, 350, 400, 450, 69]
 AR = (1142, 62) # AR 태그의 위치
 P_ENTRY = (1036, 162) # 주차라인 진입 시점의 좌표
 P_END = (1129, 69) # 주차라인 끝의 좌표 (진입 시점과의 차이 93, -93)
-P_S = (943, 255)
+P_S = (946, 252)
 DECIMAL_POINT = 5
 
 #=============================================
@@ -66,7 +66,8 @@ def heuristic(x, y):
     score = math.sqrt((end_x - x) ** 2 + (end_y - y) ** 2)
     return score
 
-
+def cal_distance(sx, sy, rx, ry):
+    return math.sqrt((rx - sx)**2 + (ry - sy)**2)
 
 def neighbors(x, y, yaw, speed, acc, dt, degree):
     neighbors = []
@@ -100,14 +101,19 @@ def planning(sx, sy, syaw, max_acceleration, dt):
     f_score = {start: heuristic(sx, sy)}
     reverse_x = []
     reverse_y = []
+
+    reverse_p = 3
     
     while open_set:
-        
-        if cnt == 400:
-            print("reverse mode")
+
+        if cnt == 1500:
+            print("reverse mode", "cnt :", cnt )
+            print(start)
             reverse_cnt = 0
             current = start
-            while reverse_cnt < 150:
+            reverse_x = []
+            reverse_y = []
+            while reverse_cnt < 50 * reverse_p:
                 min_h = float("inf")
                 for neighbor in neighbors(*current, -max_acceleration, dt, [-0.2, 0, 0.2]):
                     if min_h > heuristic(neighbor[0], neighbor[1]):
@@ -117,16 +123,14 @@ def planning(sx, sy, syaw, max_acceleration, dt):
                 reverse_x.append(neighbor[0])
                 reverse_y.append(neighbor[1])
                 reverse_cnt += 1
-
-            start = (reverse_x[-1], reverse_y[-1], last_yaw, 0)  # 초기 상태
-            print(start)
+            _start = (reverse_x[-1], reverse_y[-1], last_yaw, 0)  # 초기 상태
             open_set = []
-            heapq.heappush(open_set, (0, start))
+            heapq.heappush(open_set, (0, _start))
             came_from = {}
-            g_score = {start: 0}
-            f_score = {start: heuristic(start[0], start[1])}
-            
-        
+            g_score = {_start: 0}
+            f_score = {_start: heuristic(_start[0], _start[1])}
+            reverse_p += 1 
+            cnt = 0
         _, current = heapq.heappop(open_set)
         
         if heuristic(current[0], current[1]) < 1.0:
@@ -140,11 +144,17 @@ def planning(sx, sy, syaw, max_acceleration, dt):
             ry.append(start[1])
             rx.reverse()
             ry.reverse()
-            rx.extend([i for i in range(945,1130,2)])
-            ry.extend([i for i in range(255,68,-2)])
+
+            # print(rx[-1], ry[-1], "  cnt =",cnt, "dt:", dt)
+            # print("len(rx): ", len(rx), "   len(ry): ",len(ry))
+            # print("len(reverse_x)", len(reverse_x), "  len(reverse_y)", len(reverse_y))
+
+            arrival_x = list(map(lambda x: round(x, 1), np.arange(P_S[0],P_END[0],2.4)))
+            arrival_y = list(map(lambda x: round(x, 1), np.arange(P_S[1],P_END[1],-2.4)))
+            rx.extend(arrival_x) 
+            ry.extend(arrival_y)
             rx = reverse_x + rx
             ry = reverse_y + ry
-            # print(len(rx)) # 현재 271,322,258,153개
             return rx, ry
                 
 
@@ -169,24 +179,18 @@ def planning(sx, sy, syaw, max_acceleration, dt):
 
 track_cnt = 0
 def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
-    global rx, ry, track_cnt
+    global rx, ry
+    global track_cnt
     # angle = 10 # -50 ~ 50
-    print(yaw)
 
-    if yaw < 0:
-        speed =0
-        if track_cnt == 0:
-            print('x:',x, '  y:',y, ' velocity:',velocity)
-            track_cnt += 1
-    else:
-        speed = 50 # -50 ~ 50
-    
-    if y < 700:
-        angle = 50
-    else:
-        angle = 0
-    
+    distance = cal_distance(rx[0], ry[0],rx[1], ry[1])
 
+    if len(rx) > 2:
+        rx = rx[1:]
+        ry = ry[1:]
+
+    angle = 0
+    speed = 0
 
     drive(angle, speed)
 
@@ -197,3 +201,5 @@ def save_log(string):
     with open('log.txt', 'w') as fx:
         fx.write(string)
     print("저장 프로세스 실행")
+
+#
