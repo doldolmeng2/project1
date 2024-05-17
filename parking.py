@@ -85,6 +85,8 @@ def neighbors(x, y, yaw, speed, acc, dt, degree):
         neighbors.append(tuple([round(i,5) for i in (new_x, new_y, new_yaw, new_speed)]))
     return neighbors
 
+def cal_degree(now_x, now_y, target_x, target_y):
+    return -(math.degrees(math.atan2(target_y - now_y, target_x - now_x)))
 
 
 
@@ -146,7 +148,7 @@ def planning(sx, sy, syaw, max_acceleration, dt):
             ry.reverse()
 
             # print(rx[-1], ry[-1], "  cnt =",cnt, "dt:", dt)
-            # print("len(rx): ", len(rx), "   len(ry): ",len(ry))
+            print("len(rx): ", len(rx), "   len(ry): ",len(ry))
             # print("len(reverse_x)", len(reverse_x), "  len(reverse_y)", len(reverse_y))
 
             arrival_x = list(map(lambda x: round(x, 1), np.arange(P_S[0],P_END[0],2.4)))
@@ -155,6 +157,14 @@ def planning(sx, sy, syaw, max_acceleration, dt):
             ry.extend(arrival_y)
             rx = reverse_x + rx
             ry = reverse_y + ry
+
+            print("두 번째 까지 거리", cal_distance(rx[1], ry[1], rx[0], ry[0]))
+            print("세 번째 까지 거리", cal_distance(rx[2], ry[2], rx[1], ry[1]))
+            print("네 번째 까지 거리", cal_distance(rx[3], ry[3], rx[2], ry[2]))
+            print("다섯 번째 까지 거리", cal_distance(rx[4], ry[4], rx[3], ry[3]))
+            print("여섯 번째 까지 거리", cal_distance(rx[5], ry[5], rx[4], ry[4]))
+            print("일곱 번째 까지 거리", cal_distance(rx[6], ry[6], rx[5], ry[5]))
+
             return rx, ry
                 
 
@@ -183,14 +193,35 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     global track_cnt
     # angle = 10 # -50 ~ 50
 
-    distance = cal_distance(rx[0], ry[0],rx[1], ry[1])
+    # process
+    # rx, ry 값을 탐색하며 목표위치 결정
+    # 현재 위치와 목표위치까지 거리가 일정 값 미만이 되면 다음 목표위치 탐색 (다음 rx,ry값 탐색)
+    # 현재 yaw와 목표위치까지 각도를 계산해서 각도 적용.
+    # abs(목표 각도 - 현재각도) >0 이면 후진(speed가 음수)
 
-    if len(rx) > 2:
-        rx = rx[1:]
-        ry = ry[1:]
+    # 첫 번째에서 두번째 까지의 거리는 약 1.02 
+    # 두 번째 까지는 약 2.04
+    # 세 번째 까지는 약 3.07
+    # 네 번째 이상부터는 까지는 약 3.2
 
-    angle = 0
-    speed = 0
+    if rx and ry:
+        if cal_distance(rx[0], ry[0], x, y) < 3.5: # 목표 까지의 거리가 3보다 작으면 rx,ry 변경
+            rx = rx[1:]
+            ry = ry[1:]
+        
+    
+
+    # test
+    # if track_cnt == 0:
+    #     print(" tracking 시작값 x:", x, "   y:",y, "   yaw :", yaw)
+    # elif track_cnt < 10:
+    #     print(f'track_cnt :{track_cnt} 에서 velocity:{velocity}') # cnt 2부터 속도 50
+
+    if track_cnt == 100 or track_cnt == 500:
+        print("cnt 100, 500일 때 속도 :", velocity)
+    track_cnt += 1
+    angle = 50
+    speed = 100
 
     drive(angle, speed)
 
