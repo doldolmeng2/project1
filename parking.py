@@ -25,7 +25,7 @@ xycar_msg = xycar_motor()
 #=============================================
 # 프로그램에서 사용할 변수, 저장공간 선언부
 #============================================= 
-rx, ry = [300, 350, 400, 450, 1129], [300, 350, 400, 450, 69]
+rx, ry  = [300, 350, 400, 450, 1129], [300, 350, 400, 450, 69]
 
 #=============================================
 # 프로그램에서 사용할 상수 선언부
@@ -33,7 +33,6 @@ rx, ry = [300, 350, 400, 450, 1129], [300, 350, 400, 450, 69]
 AR = (1142, 62) # AR 태그의 위치
 P_ENTRY = (1036, 162) # 주차라인 진입 시점의 좌표
 P_END = (1129, 69) # 주차라인 끝의 좌표 (진입 시점과의 차이 93, -93)
-P_S = (946, 252)
 DECIMAL_POINT = 5
 
 #=============================================
@@ -52,6 +51,7 @@ def drive(angle, speed):
 # 최대가속도 max_acceleration, 단위시간 dt 를 전달받고
 # 경로를 리스트를 생성하여 반환한다.
 #=============================================
+
 def calculate_third_side(a, b, theta):
     """
     주어진 두 변(a, b)과 그 사이의 각(theta)을 이용하여 세 번째 변(c)을 계산합니다.
@@ -62,36 +62,35 @@ def calculate_third_side(a, b, theta):
 
 def heuristic(x, y):
     """유클리드 거리 기반 히유리스틱 함수."""
-    end_x, end_y = P_S
+    end_x, end_y = P_ENTRY
     score = math.sqrt((end_x - x) ** 2 + (end_y - y) ** 2)
     return score
 
-def cal_distance(sx, sy, rx, ry):
+def cal_distance(sx, sy, rx, ry): # 단순히 두 좌표의 거리를 계산
     return math.sqrt((rx - sx)**2 + (ry - sy)**2)
 
-def neighbors(x, y, yaw, speed, acc, dt, degree):
+def neighbors(x, y, yaw, speed, acc, dt, degree): # 어떤 좌표에서 다음 지점의 좌표를 구하는 메서드
     neighbors = []
-    for delta_yaw in degree:
-        new_yaw = yaw + delta_yaw
-        new_speed = speed + acc * dt
+    for delta_yaw in degree: # 좌,직,우 하나씩 만듦
+        new_yaw = yaw + delta_yaw # 새로운 각도 값 생성
+        new_speed = speed + acc * dt # 새로운 속도 값 생성
         # 속도 50 이하로 제한
         if abs(new_speed) > 50:
             if new_speed < 0:
                 new_speed = -50
             else:
                 new_speed = 50
-        new_x = x + -(new_speed * math.sin(math.radians(new_yaw)) * dt * 4)
-        new_y = y + new_speed * math.cos(math.radians(new_yaw)) * dt * 4
+        new_x = x + -(new_speed * math.sin(math.radians(new_yaw)) * dt * 3) # 
+        new_y = y + new_speed * math.cos(math.radians(new_yaw)) * dt * 3
         neighbors.append(tuple([round(i,5) for i in (new_x, new_y, new_yaw, new_speed)]))
     return neighbors
 
-def cal_degree(now_x, now_y, target_x, target_y):
-    return -(math.degrees(math.atan2(target_y - now_y, target_x - now_x)))
+
 
 
 
 def planning(sx, sy, syaw, max_acceleration, dt):
-    global rx, ry
+    global rx, ry, ryaw
     """자율주행 경로 생성 함수."""
 
     cnt = 0
@@ -105,12 +104,13 @@ def planning(sx, sy, syaw, max_acceleration, dt):
     reverse_y = []
 
     reverse_p = 3
+    re_str = ""
     
     while open_set:
 
         if cnt == 1500:
-            print("reverse mode", "cnt :", cnt )
-            print(start)
+            # print("reverse mode", "cnt :", cnt )
+            # print(start)
             reverse_cnt = 0
             current = start
             reverse_x = []
@@ -138,32 +138,37 @@ def planning(sx, sy, syaw, max_acceleration, dt):
         if heuristic(current[0], current[1]) < 1.0:
             rx = []
             ry = []
+            ryaw = []
             while current in came_from:
                 rx.append(current[0])
                 ry.append(current[1])
+                ryaw.append(current[2])
                 current = came_from[current]
             rx.append(start[0])
             ry.append(start[1])
+            ryaw.append(start[2])
             rx.reverse()
             ry.reverse()
-
+            ryaw.reverse()
             # print(rx[-1], ry[-1], "  cnt =",cnt, "dt:", dt)
-            print("len(rx): ", len(rx), "   len(ry): ",len(ry))
+            # print("len(rx): ", len(rx), "   len(ry): ",len(ry))
             # print("len(reverse_x)", len(reverse_x), "  len(reverse_y)", len(reverse_y))
 
-            arrival_x = list(map(lambda x: round(x, 1), np.arange(P_S[0],P_END[0],2.4)))
-            arrival_y = list(map(lambda x: round(x, 1), np.arange(P_S[1],P_END[1],-2.4)))
+            arrival_x = list(map(lambda x: round(x, 1), np.arange(P_ENTRY[0],P_END[0],2.4)))
+            arrival_y = list(map(lambda x: round(x, 1), np.arange(P_ENTRY[1],P_END[1],-2.4)))
             rx.extend(arrival_x) 
             ry.extend(arrival_y)
             rx = reverse_x + rx
             ry = reverse_y + ry
-
-            print("두 번째 까지 거리", cal_distance(rx[1], ry[1], rx[0], ry[0]))
-            print("세 번째 까지 거리", cal_distance(rx[2], ry[2], rx[1], ry[1]))
-            print("네 번째 까지 거리", cal_distance(rx[3], ry[3], rx[2], ry[2]))
-            print("다섯 번째 까지 거리", cal_distance(rx[4], ry[4], rx[3], ry[3]))
-            print("여섯 번째 까지 거리", cal_distance(rx[5], ry[5], rx[4], ry[4]))
-            print("일곱 번째 까지 거리", cal_distance(rx[6], ry[6], rx[5], ry[5]))
+            for point in tuple(zip(rx, ry)):
+                re_str += str(point) + "\t" + str(heuristic(point[0], point[1])) + "\n" 
+            # save_log(re_str)
+            # print("두 번째 까지 거리", cal_distance(rx[1], ry[1], rx[0], ry[0]))
+            # print("세 번째 까지 거리", cal_distance(rx[2], ry[2], rx[1], ry[1]))
+            # print("네 번째 까지 거리", cal_distance(rx[3], ry[3], rx[2], ry[2]))
+            # print("다섯 번째 까지 거리", cal_distance(rx[4], ry[4], rx[3], ry[3]))
+            # print("여섯 번째 까지 거리", cal_distance(rx[5], ry[5], rx[4], ry[4]))
+            # print("일곱 번째 까지 거리", cal_distance(rx[6], ry[6], rx[5], ry[5]))
 
             return rx, ry
                 
@@ -176,7 +181,7 @@ def planning(sx, sy, syaw, max_acceleration, dt):
                 f_score[neighbor] = tentative_g_score + heuristic(neighbor[0], neighbor[1])
                 heapq.heappush(open_set, (f_score[neighbor], neighbor))
         cnt += 1
-    
+
 
 
 
@@ -187,42 +192,21 @@ def planning(sx, sy, syaw, max_acceleration, dt):
 # 각도와 속도를 결정하여 주행한다.
 #=============================================
 
+
+
 track_cnt = 0
 def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     global rx, ry
     global track_cnt
-    # angle = 10 # -50 ~ 50
+    print("cnt :", track_cnt)
+    print(velocity, max_acceleration * dt)
 
-    # process
-    # rx, ry 값을 탐색하며 목표위치 결정
-    # 현재 위치와 목표위치까지 거리가 일정 값 미만이 되면 다음 목표위치 탐색 (다음 rx,ry값 탐색)
-    # 현재 yaw와 목표위치까지 각도를 계산해서 각도 적용.
-    # abs(목표 각도 - 현재각도) >0 이면 후진(speed가 음수)
-
-    # 첫 번째에서 두번째 까지의 거리는 약 1.02 
-    # 두 번째 까지는 약 2.04
-    # 세 번째 까지는 약 3.07
-    # 네 번째 이상부터는 까지는 약 3.2
-
-    if rx and ry:
-        if cal_distance(rx[0], ry[0], x, y) < 3.5: # 목표 까지의 거리가 3보다 작으면 rx,ry 변경
-            rx = rx[1:]
-            ry = ry[1:]
-        
-    
-
-    # test
-    # if track_cnt == 0:
-    #     print(" tracking 시작값 x:", x, "   y:",y, "   yaw :", yaw)
-    # elif track_cnt < 10:
-    #     print(f'track_cnt :{track_cnt} 에서 velocity:{velocity}') # cnt 2부터 속도 50
-
-    if track_cnt == 100 or track_cnt == 500:
-        print("cnt 100, 500일 때 속도 :", velocity)
-    track_cnt += 1
     angle = 50
-    speed = 100
-
+    speed = 50
+    if track_cnt > 10:
+        angle = 0 
+        speed = 0
+    track_cnt += 1 
     drive(angle, speed)
 
 
@@ -233,4 +217,5 @@ def save_log(string):
         fx.write(string)
     print("저장 프로세스 실행")
 
-#
+# tracking 속도를 50으로 설정하면 3번째 호출 때 velocity가 50이 됨
+# traking 에서 최고 각도, 최고 속도로 회전하면 반지름이 231.436인 원을 따라감
