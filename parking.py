@@ -94,8 +94,8 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     
     # 가장 가까운 경로 점 계산
     target_index = np.argmin(np.sqrt((rx - x)**2 + (ry - y)**2)) #가장 값이 작은 원소의 인덱스를 리턴함.
-    target_x = rx[target_index]
-    target_y = ry[target_index]
+    target_x = rx[target_index] #우리가 목표로하는 베지어 곡선 위의 점의 x좌표
+    target_y = ry[target_index] #우리가 목표로하는 베지어 곡선 위의 점의 y좌표
 
     # 각도 오류 계산
     angle_error = math.atan2(target_y - y, target_x - x) - yaw #두 변수를 받아서 그들의 비율에 대한 아크탄젠트 값을 반환한다. 라디안 단위.
