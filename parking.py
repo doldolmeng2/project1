@@ -17,7 +17,7 @@ from sensor_msgs.msg import Imu
 
 # 모터 토픽을 발행할 것임을 선언
 motor_pub = rospy.Publisher('xycar_motor', xycar_motor, queue_size=1) #메세지를 발행할 토픽 이름, 발행할 메시지 타입, 발행할 메시지 큐의 크기
-xycar_msg = xycar_motor()
+xycar_msg = xycar_motor() #메시지 객체 생성
 
 # 프로그램에서 사용할 변수, 저장공간 선언부
 rx, ry = [], []
@@ -31,10 +31,10 @@ P_END = (1129, 69)  # 주차라인 끝의 좌표
 current_x, current_y, current_yaw = 0, 0, 0
 
 def drive(angle, speed):
-    xycar_msg.angle = int(angle)
-    xycar_msg.speed = int(speed)
+    xycar_msg.angle = int(angle) #메시지에 각 정보를 담음
+    xycar_msg.speed = int(speed) #메시지에 속도 정보를 담음
     rospy.loginfo(f"Driving command - Angle: {angle}, Speed: {speed}")
-    motor_pub.publish(xycar_msg)
+    motor_pub.publish(xycar_msg) #토픽에 메시지를 담아서 토픽을 발행함.
 
 def bezier_curve(points, num=100):
     n = len(points)
@@ -75,13 +75,13 @@ class PIDController:
         self.prev_error = error
         return self.Kp * error + self.Ki * self.integral + self.Kd * derivative
 
-def pose_callback(data):
+def pose_callback(data):  #현재 자동차의 위치를 업데이트한다.
     global current_x, current_y
     current_x = data.pose.pose.position.x
     current_y = data.pose.pose.position.y
     rospy.loginfo(f"Pose updated - X: {current_x}, Y: {current_y}")
 
-def imu_callback(data):
+def imu_callback(data): #현재 자동차의 각을 업데이트한다.
     global current_yaw
     current_yaw = data.orientation.z
     rospy.loginfo(f"Yaw updated - Yaw: {current_yaw}")
