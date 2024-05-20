@@ -63,7 +63,7 @@ def planning(sx, sy, syaw, max_acceleration, dt):
 
 class PIDController: #비례-적분-미분 제어. 시스템의 현재 상태와 원하는 목표 상태 간의 차이, 즉 오차를 줄이기 위해 사용함.
     def __init__(self, Kp, Ki, Kd):
-        self.Kp = Kp #비례 제어 : 오차에 비례하여 제어 액션을 취함.
+        self.Kp = Kp #비례 제어 : 오차에 비례하여 제어 액션을 취함. Kp*error
         self.Ki = Ki
         self.Kd = Kd
         self.prev_error = 0
@@ -90,6 +90,7 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     global rx, ry
 
     # PID 제어기 인스턴스 생성 및 초기 설정 값 조정
+    #kp,ki,kd 매개변수를 조정해서 경로 추적 성능을 개선할 수 있다.
     pid = PIDController(Kp=1.5, Ki=0.1, Kd=0.05)
     
     # 가장 가까운 경로 점 계산
@@ -98,14 +99,16 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     target_y = ry[target_index] #우리가 목표로하는 베지어 곡선 위의 점의 y좌표
 
     # 각도 오류 계산
-    angle_error = math.atan2(target_y - y, target_x - x) - yaw #두 변수를 받아서 그들의 비율에 대한 아크탄젠트 값을 반환한다. 라디안 단위.
+    angle_error = math.atan2(target_y - y, target_x - x) - yaw #두 변수를 받아서 그들의 비율에 대한 아크탄젠트 값을 반환한다. 단위가 '도'인 것으로 보인다.
     #두 점(목표x,목표y)와 (현재x,현재y) 사이의 각도를 계산
     #원점에서 출발해서 목표점으로 향하는 벡터와, 원점에서 출발해서 현재점으로 향하는 벡터 사이의 각을 구한다.
 
 
     # PID 제어 신호 계산
     angle = pid.control(angle_error, dt) #dt시간에 대한 PID제어를 적용한 각을 받는다.
-    
+    rospy.loginfo(f"angle : {angle}")
+    #로그를 살펴봤을 때, pid.control을 거친 각이 -240언저리가 찍힘. 무언가 잘못되었음. PID 파라미터를 조정하거나 코드상의 오류를 수정해야 할 듯
+
     # 각도 제한
     max_angle = 50  # 최대 조향각 (도)
     angle = max(min(angle, max_angle), -max_angle) #50~-50도로 조향각을 제한한다.
