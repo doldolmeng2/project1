@@ -16,7 +16,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from sensor_msgs.msg import Imu
 
 # 모터 토픽을 발행할 것임을 선언
-motor_pub = rospy.Publisher('xycar_motor', xycar_motor, queue_size=1)
+motor_pub = rospy.Publisher('xycar_motor', xycar_motor, queue_size=1) #메세지를 발행할 토픽 이름, 발행할 메시지 타입, 발행할 메시지 큐의 크기
 xycar_msg = xycar_motor()
 
 # 프로그램에서 사용할 변수, 저장공간 선언부
@@ -45,13 +45,13 @@ def bezier_curve(points, num=100):
         for j in range(1, n):
             temp[:n - j, :] = (1 - T) * temp[:n - j, :] + T * temp[1:n - j + 1, :]
         result[t] = temp[0]
-    return result[:, 0], result[:, 1]
+    return result[:, 0], result[:, 1] #전체 곡선을 구성하는 모든 점들의 x좌표, y좌표를 나눠서 리턴한다.
 
 def planning(sx, sy, syaw, max_acceleration, dt):
     global rx, ry
     rospy.loginfo("Start Planning")
-    
-    points = np.array([
+     
+    points = np.array([ #베지어 곡선을 그리는데 사용되는 제어점(제어점이 곡선의 모양을 결정한다.)
         [sx, sy],
         [sx + 100, sy + 50],
         [P_ENTRY[0], P_ENTRY[1]],
@@ -93,19 +93,19 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     pid = PIDController(Kp=1.5, Ki=0.1, Kd=0.05)
     
     # 가장 가까운 경로 점 계산
-    target_index = np.argmin(np.sqrt((rx - x)**2 + (ry - y)**2))
+    target_index = np.argmin(np.sqrt((rx - x)**2 + (ry - y)**2)) #가장 값이 작은 원소의 인덱스를 리턴함.
     target_x = rx[target_index]
     target_y = ry[target_index]
 
     # 각도 오류 계산
-    angle_error = math.atan2(target_y - y, target_x - x) - yaw
+    angle_error = math.atan2(target_y - y, target_x - x) - yaw #두 변수를 받아서 그들의 비율에 대한 아크탄젠트 값을 반환한다. 라디안 단위.
     
     # PID 제어 신호 계산
     angle = pid.control(angle_error, dt)
     
     # 각도 제한
     max_angle = 50  # 최대 조향각 (도)
-    angle = max(min(angle, max_angle), -max_angle)
+    angle = max(min(angle, max_angle), -max_angle) #50~-50도로 조향각을 제한한다.
     
     # 속도 설정 (적절한 속도로 조정 필요)
     speed = 30  # 속도를 조정하여 경로 추적 성능 개선
@@ -122,7 +122,7 @@ def main():
     rospy.init_node('parking_node', anonymous=True)
     
     # 위치와 방향 데이터를 가져오는 ROS 토픽 구독
-    rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, pose_callback)
+    rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, pose_callback) #구독할 토픽 이름, 구독할 메시지 타입, 메시지를 받았을 때 실행한 콜백 함수
     rospy.Subscriber('/imu', Imu, imu_callback)
     
     try:
@@ -133,7 +133,8 @@ def main():
             max_acceleration = 1.0
             dt = 0.1
 
-            rx, ry = planning(x, y, yaw, max_acceleration, dt)
+            rx, ry = planning(x, y, yaw, max_acceleration, dt) #곡선 정보를 받음.(rx는 모든 점들의 x좌표를 리스트로 가지고 있고, ry는 y좌표)
+            #rx,ry는 tracking함수 내에서 전역 변수로 선언되어서 사용된다.
             tracking(None, x, y, yaw, velocity, max_acceleration, dt)
 
     except rospy.ROSInterruptException:
