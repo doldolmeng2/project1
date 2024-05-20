@@ -61,17 +61,17 @@ def planning(sx, sy, syaw, max_acceleration, dt):
     rx, ry = bezier_curve(points, num=50)
     return rx, ry
 
-class PIDController:
+class PIDController: #비례-적분-미분 제어. 시스템의 현재 상태와 원하는 목표 상태 간의 차이, 즉 오차를 줄이기 위해 사용함.
     def __init__(self, Kp, Ki, Kd):
-        self.Kp = Kp
+        self.Kp = Kp #비례 제어 : 오차에 비례하여 제어 액션을 취함.
         self.Ki = Ki
         self.Kd = Kd
         self.prev_error = 0
         self.integral = 0
 
     def control(self, error, dt):
-        self.integral += error * dt
-        derivative = (error - self.prev_error) / dt
+        self.integral += error * dt #적분 제어 : 시간에 대해 누적된 오차를 줄이기 위해 사용
+        derivative = (error - self.prev_error) / dt #미분 제어 : 오차가 얼마나 빠르게 변하는지에 대해 반응
         self.prev_error = error
         return self.Kp * error + self.Ki * self.integral + self.Kd * derivative
 
@@ -99,9 +99,12 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
 
     # 각도 오류 계산
     angle_error = math.atan2(target_y - y, target_x - x) - yaw #두 변수를 받아서 그들의 비율에 대한 아크탄젠트 값을 반환한다. 라디안 단위.
-    
+    #두 점(목표x,목표y)와 (현재x,현재y) 사이의 각도를 계산
+    #원점에서 출발해서 목표점으로 향하는 벡터와, 원점에서 출발해서 현재점으로 향하는 벡터 사이의 각을 구한다.
+
+
     # PID 제어 신호 계산
-    angle = pid.control(angle_error, dt)
+    angle = pid.control(angle_error, dt) #dt시간에 대한 PID제어를 적용한 각을 받는다.
     
     # 각도 제한
     max_angle = 50  # 최대 조향각 (도)
@@ -119,7 +122,7 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
 def main():
     global current_x, current_y, current_yaw
     
-    rospy.init_node('parking_node', anonymous=True)
+    rospy.init_node('parking_node', anonymous=True) #ROS환경에서 파이썬 노드 생성.
     
     # 위치와 방향 데이터를 가져오는 ROS 토픽 구독
     rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, pose_callback) #구독할 토픽 이름, 구독할 메시지 타입, 메시지를 받았을 때 실행한 콜백 함수
