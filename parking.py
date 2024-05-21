@@ -58,7 +58,7 @@ def planning(sx, sy, syaw, max_acceleration, dt):
         [P_END[0], P_END[1]]
     ])
     
-    rx, ry = bezier_curve(points, num=50)
+    rx, ry = bezier_curve(points, num=300)
     return rx, ry
 
 class PIDController: #비례-적분-미분 제어. 시스템의 현재 상태와 원하는 목표 상태 간의 차이, 즉 오차를 줄이기 위해 사용함.
@@ -99,16 +99,15 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     target_y = ry[target_index] #우리가 목표로하는 베지어 곡선 위의 점의 y좌표
 
     # 각도 오류 계산
-    angle_error = math.atan2(target_y - y, target_x - x) - yaw #두 변수를 받아서 그들의 비율에 대한 아크탄젠트 값을 반환한다. 단위가 '도'인 것으로 보인다.
+    angle_error = math.atan2(target_y - y, target_x - x) - yaw #두 변수를 받아서 그들의 비율에 대한 아크탄젠트 값을 반환한다. 단위는 라디안.
     #두 점(목표x,목표y)와 (현재x,현재y) 사이의 각도를 계산
     #원점에서 출발해서 목표점으로 향하는 벡터와, 원점에서 출발해서 현재점으로 향하는 벡터 사이의 각을 구한다.
-
+    angle_error = math.degrees(angle_error) # 각도 오류를 라디안에서 도 단위로 변환
 
     # PID 제어 신호 계산
     angle = pid.control(angle_error, dt) #dt시간에 대한 PID제어를 적용한 각을 받는다.
     rospy.loginfo(f"pid controlled angle : {angle}")
-    #로그를 살펴봤을 때, pid.control을 거친 각이 -240언저리가 찍힘. 무언가 잘못되었음. PID 파라미터를 조정하거나 코드상의 오류를 수정해야 할 듯
-
+    
     if angle>180:
         angle=180-angle
     elif angle<-180:
