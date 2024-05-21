@@ -106,8 +106,13 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
 
     # PID 제어 신호 계산
     angle = pid.control(angle_error, dt) #dt시간에 대한 PID제어를 적용한 각을 받는다.
-    rospy.loginfo(f"angle : {angle}")
+    rospy.loginfo(f"pid controlled angle : {angle}")
     #로그를 살펴봤을 때, pid.control을 거친 각이 -240언저리가 찍힘. 무언가 잘못되었음. PID 파라미터를 조정하거나 코드상의 오류를 수정해야 할 듯
+
+    if angle>180:
+        angle=180-angle
+    elif angle<-180:
+        angle=-180-angle
 
     # 각도 제한
     max_angle = 50  # 최대 조향각 (도)
