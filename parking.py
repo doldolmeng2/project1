@@ -47,7 +47,7 @@ def bezier_curve(points, num=100):
         result[t] = temp[0]
     return result[:, 0], result[:, 1] #전체 곡선을 구성하는 모든 점들의 x좌표, y좌표를 나눠서 리턴한다.
 
-def planning(sx, sy, syaw, max_acceleration, dt):
+def planning(sx, sy, syaw, dt):
     global rx, ry
     rospy.loginfo("Start Planning")
      
@@ -86,7 +86,7 @@ def imu_callback(data): #현재 자동차의 각을 업데이트한다.
     current_yaw = data.orientation.z
     rospy.loginfo(f"Yaw updated - Yaw: {current_yaw}")
 
-def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
+def tracking(x, y, yaw, dt):
     global rx, ry
 
     # PID 제어기 인스턴스 생성 및 초기 설정 값 조정
@@ -119,7 +119,7 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     angle = max(min(angle, max_angle), -max_angle) #50~-50도로 조향각을 제한한다.
     
     # 속도 설정 (적절한 속도로 조정 필요)
-    speed = 30  # 속도를 조정하여 경로 추적 성능 개선
+    speed = 100  # 속도를 조정하여 경로 추적 성능 개선
 
     # 디버깅 출력을 추가
     rospy.loginfo(f"Target: ({target_x}, {target_y}), Current: ({x}, {y}), Angle Error: {angle_error}, Angle: {angle}")
@@ -140,13 +140,11 @@ def main():
         while not rospy.is_shutdown():
             # 갱신된 차량의 현재 상태를 사용
             x, y, yaw = current_x, current_y, current_yaw
-            velocity = 0
-            max_acceleration = 1.0
             dt = 0.1
 
-            rx, ry = planning(x, y, yaw, max_acceleration, dt) #곡선 정보를 받음.(rx는 모든 점들의 x좌표를 리스트로 가지고 있고, ry는 y좌표)
+            rx, ry = planning(x, y, yaw, dt) #곡선 정보를 받음.(rx는 모든 점들의 x좌표를 리스트로 가지고 있고, ry는 y좌표)
             #rx,ry는 tracking함수 내에서 전역 변수로 선언되어서 사용된다.
-            tracking(None, x, y, yaw, velocity, max_acceleration, dt)
+            tracking(x, y, yaw, dt)
 
     except rospy.ROSInterruptException:
         pass
