@@ -58,7 +58,7 @@ def planning(sx, sy, syaw, max_acceleration, dt):
         [P_END[0], P_END[1]]
     ])
     
-    rx, ry = bezier_curve(points, num=300)
+    rx, ry = bezier_curve(points, num=50)
     return rx, ry
 
 class PIDController: #비례-적분-미분 제어. 시스템의 현재 상태와 원하는 목표 상태 간의 차이, 즉 오차를 줄이기 위해 사용함.
@@ -127,7 +127,7 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     angle = max(min(angle, max_angle), -max_angle) #50~-50도로 조향각을 제한한다.
     
     # 속도 설정 (적절한 속도로 조정 필요)
-    speed = 30  # 속도를 조정하여 경로 추적 성능 개선
+    speed = 100  # 속도를 조정하여 경로 추적 성능 개선
 
     # 디버깅 출력을 추가
     rospy.loginfo(f"Target: ({target_x}, {target_y}), Current: ({x}, {y}), drive angle: {angle}")
