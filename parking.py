@@ -66,7 +66,7 @@ class PIDController: #비례-적분-미분 제어. 시스템의 현재 상태와
         self.Kp = Kp #비례 제어 : 오차에 비례하여 제어 액션을 취함. Kp*error
         self.Ki = Ki
         self.Kd = Kd
-        self.prev_error = 0
+        self.prev_error=0
         self.integral = 0
 
     def control(self, error, dt):
@@ -101,16 +101,16 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
 
     # 각도 오류 계산
     #x,y는 현재 자동차의 위치를 말한다.
-    angle= math.degrees(math.atan2(target_y - y, target_x - x))-yaw #두 변수를 받아서 그들의 비율에 대한 아크탄젠트 값을 반환한다. atn2 단위는 라디안, yaw 단위는 도.
+    angle_error= math.degrees(math.atan2(target_y - y, target_x - x))-yaw #두 변수를 받아서 그들의 비율에 대한 아크탄젠트 값을 반환한다. atn2 단위는 라디안, yaw 단위는 도.
     #두 점(목표x,목표y)와 (현재x,현재y) 사이의 각도를 계산
     #원점에서 출발해서 목표점으로 향하는 벡터와, 원점에서 출발해서 현재점으로 향하는 벡터 사이의 각을 구한다.
 
     #지금은 pid제어 주석 처리해 둠. 각을 측정하는 방법을 제대로 고치고 나면 주석 해제하고 코드로 원래대로 돌려야 함.
 
-    #rospy.loginfo(f"\n\nangle error : {angle_error}")
+    rospy.loginfo(f"\n\nangle error : {angle_error}")
     # PID 제어 신호 계산
-    #angle = pid.control(angle_error, dt) #dt시간에 대한 PID제어를 적용한 각을 받는다.
-    #rospy.loginfo(f"\n\npid controlled angle : {angle}")
+    angle = pid.control(angle_error, dt) #dt시간에 대한 PID제어를 적용한 각을 받는다.
+    rospy.loginfo(f"pid controlled angle : {angle}")
     
     if angle>0: #360~-360도로 바꿈.(의미 정보는 변하지 않음.)
         angle%=360
