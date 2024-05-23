@@ -8,6 +8,7 @@ README FILE
 # 해결한 내용들
 - 현재 디렉터리에 파일 저장/수정 권한이 없어서 저장이나 새로운 파일 생성이 안되는 경우.
     - sudo chown -R username:username ~/your/directory/name
+    - sudo chmod 777 /home/YourLinuxUsername
     - -R 옵션은 해당 디렉터리와 하위 파일에 대한 권한을 모두 수정한다.
 - sudo 그룹에 현재 사용자 추가
     - sudo usermod -aG sudo your_username
