@@ -7,7 +7,7 @@
 
 #=============================================
 # 함께 사용되는 각종 파이썬 패키지들의 import 선언부
-#=============================================
+
 import pygame
 import numpy as np
 import os
@@ -16,30 +16,26 @@ import rospy
 import heapq
 from xycar_msgs.msg import xycar_motor
 
-#=============================================
-# 모터 토픽을 발행할 것임을 선언
-#============================================= 
+
+# 모터 토픽을 발행할 것임을 선언 
 motor_pub = rospy.Publisher('xycar_motor', xycar_motor, queue_size=1)
 xycar_msg = xycar_motor()
 
-#=============================================
-# 프로그램에서 사용할 변수, 저장공간 선언부
-#============================================= 
-rx, ry  = [300, 350, 400, 450, 1129], [300, 350, 400, 450, 69]
 
-#=============================================
+# 프로그램에서 사용할 변수, 저장공간 선언부 
+rx, ry, ryaw  = [], [], []
+
+
 # 프로그램에서 사용할 상수 선언부
-#=============================================
 AR = (1142, 62) # AR 태그의 위치
 P_ENTRY = (1036, 162) # 주차라인 진입 시점의 좌표
 P_END = (1129, 69) # 주차라인 끝의 좌표 (진입 시점과의 차이 93, -93)
 DECIMAL_POINT = 5
 
-#=============================================
+
 # 모터 토픽을 발행하는 함수
 # 입력으로 받은 angle과 speed 값을
 # 모터 토픽에 옮겨 담은 후에 토픽을 발행함.
-#=============================================
 def drive(angle, speed):
     xycar_msg.angle = int(angle)
     xycar_msg.speed = int(speed)
@@ -221,27 +217,30 @@ def tracking(screen, x, y, yaw, velocity, max_acceleration, dt):
     nearest_index = distances.index(min(distances))
     
     # 경로를 따라가기 위해 다음 목표점 설정
-    target_index = nearest_index + 1 if nearest_index + 1 < len(rx) else nearest_index
+    target_index = nearest_index + 2 if nearest_index + 2 < len(rx) else nearest_index
     target_x, target_y = rx[target_index], ry[target_index]
 
     # 목표점까지의 각도 계산
-    path_angle = math.degrees(math.atan2(target_y - y, target_x - x))
+    path_angle = math.degrees(math.atan2(y - target_y, target_x - x))
     angle_error = path_angle - yaw
     angle_error = (angle_error + 360) % 360
     if angle_error > 180:
         angle_error -= 360  # 최소 회전 각도로 조정
 
     # PID 컨트롤러를 사용하여 조향각 계산
-    steering_angle = PID_controller.compute(angle_error, dt)
-    steering_angle = max(min(steering_angle, 50), -50)  # 최대 조향각을 50도로 제한
+    compute_PID = PID_controller.compute(angle_error, dt)
+    #rospy.loginfo(f"Computed PID: {PID_controller.compute(angle_error, dt)}")
+    steering_angle = -min(max(PID_controller.compute(angle_error, dt), -50), 50)  # 최대 조향각을 50도로 제한
+    #rospy.loginfo(f"Computed PID: {PID_controller.compute(angle_error, dt)}, After Limit: {steering_angle}")
+    
 
     # 속도 설정
     max_speed = 50  # 최대 속도
-    min_speed = 40   # 최소 속도 설정
-    speed = max(min_speed, max_speed * (1 - abs(steering_angle) / 50))  # 각도에 반비례하는 속도 조정, 최소 속도 적용
+    min_speed = 50   # 최소 속도 설정
+    speed = 50 #max(min_speed, max_speed * (1 - abs(steering_angle) / 50))  # 각도에 반비례하는 속도 조정, 최소 속도 적용
 
     rospy.loginfo(f"현재 위치: ({x}, {y}) 목표 위치: ({target_x}, {target_y}) 조향 각도: {steering_angle}, 속도: {speed}")
     drive(steering_angle, speed)
 
 # PID 컨트롤러 초기화 (파라미터는 실험을 통해 조정 필요)
-PID_controller = PIDController(kp=1.5, ki=0.001, kd=3)
+PID_controller = PIDController(kp=5, ki=0.01, kd=10)
